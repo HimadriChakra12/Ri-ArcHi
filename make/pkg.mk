@@ -122,6 +122,9 @@ zotero-install:
 
 zotero: zotero-arc zotero-install
 
+dotnet:
+	@$(BAPH)$(N) dotnet-runtime-6.0 dotnet-runtime-7.0
+
 helium-browser onlyoffice:
 	@$(BAPH)$(N) $@-bin 
 
