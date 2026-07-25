@@ -57,24 +57,34 @@ xorgconf:
 	ls /etc/X11/xorg.conf.d/
 
 clean:
-	-sudo paccache -r
-	-$(PACMAN) -Scc --noconfirm
-	-@orphans=$$($(PACMAN) -Qtdq); \
-	if [ -n "$$orphans" ]; then \
+	@echo "==> Cleaning package cache..."
+	@sudo paccache -r || true
+	@$(PACMAN) -Scc --noconfirm || true
+	@echo "==> Removing orphan packages..."
+	@if orphans=$$($(PACMAN) -Qdtq 2>/dev/null); then \
+		if [ -n "$$orphans" ]; then \
 		$(PACMAN) -Rns $(NOC) $$orphans; \
-	else \
+		fi; \
+		else \
 		echo "No orphaned packages found."; \
-	fi
-	-sudo journalctl --vacuum-size=500M
-	-sudo find /var/log -type f -name "*.log" -exec truncate -s 0 {} \;
-	-sudo rm -rf /tmp/* /var/tmp/*
-	-if command -v docker &> /dev/null; then \
-		echo "[6/10] Pruning unused Docker objects..."; \
+		fi
+	@echo "==> Vacuuming journal..."
+	@sudo journalctl --vacuum-size=500M || true
+	@echo "==> Truncating log files..."
+	@sudo find /var/log -type f -name "*.log" -exec truncate -s 0 {} \; || true
+	@echo "==> Cleaning temporary directories..."
+	@sudo rm -rf /tmp/* /var/tmp/*
+	@echo "==> Cleaning Docker..."
+	@if command -v docker >/dev/null 2>&1; then \
 		sudo docker system prune -a --volumes -f; \
+	else \
+		echo "Docker not installed."; \
 	fi
-	-sudo rm -rf /var/cache/*
-	-sudo find /root -type f -size +50M -exec ls -lh {} \; | awk '{ print $$9 ": " $$5 }'
-	-sudo du -hxd1 /opt | sort -h | awk '$$1 ~ /[0-9]M|G/ {print}'
+	@echo "==> Large files in /root..."
+	@sudo find /root -type f -size +50M -exec du -h {} \; 2>/dev/null || true
+	@echo "==> Large directories in /opt..."
+	@sudo du -hxd1 /opt 2>/dev/null | sort -h | awk '$$1 ~ /[0-9]M|G/ {print}'
+	@echo "==> Cleanup complete."
 
 waydroid:
 	$(PACMAN) -S $(NEED) xorg-xwayland cage waydroid
