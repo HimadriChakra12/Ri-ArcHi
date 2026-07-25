@@ -59,7 +59,7 @@ rdfm:
 		git checkout -b config 2>/dev/null || git checkout config && \
 		bash install.bash
 
-baph rot fetch dtop shot whot det px pw wtf:
+few baph rot fetch dtop shot whot det px pw wtf:
 	$(CLONE)
 	$(MK)
 
@@ -122,7 +122,7 @@ zotero-install:
 
 zotero: zotero-arc zotero-install
 
-onlyoffice:
+helium-browser onlyoffice:
 	@$(BAPH)$(N) $@-bin 
 
 raindrop:

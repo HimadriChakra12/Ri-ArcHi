@@ -46,7 +46,7 @@ xorginit:
 wayinit:
 	$(PACMAN) -S $(WAY)
 
-x: xorginit shot px sxat rsxiv i3
+x: xorginit shot px sxat rsxiv i3 few
 way: wayinit whot pw swat
 
 gpu:
