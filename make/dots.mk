@@ -55,6 +55,7 @@ lyconf:
 nvim:
 	@echo "Cloning Himstart"
 	-@$(GG) $(URL)/himstart.nvim $(CONF)/nvim
+	-@$(LN) $(CONF)/nvim $(PKG)/nvim
 	@echo "Done"
 picom:
 	$(call LINK,$(DOTS)/picom,$(CONF)/picom)
