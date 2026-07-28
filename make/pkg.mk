@@ -5,7 +5,7 @@ ZOTEROURL = https://download.zotero.org/client/release/$(ZOTEROVER)/Zotero-$(ZOT
 
 # PAKCAGES
 XORG = xorg-server xorg-xinit xorg-apps xorg-xbacklight xbindkeys xorg-xdpyinfo xss-lock \
-	   xorg-server xorg-xinit xorg-xauth xorg-xrandr xorg-fonts-misc xorg-xsetroot xclip picom
+	   xorg-server xorg-xinit xorg-xauth xorg-xrandr xorg-fonts-misc xorg-xsetroot xclip libx11
 
 EASYEFF = pipewire  pipewire-alsa  pipewire-pulse pipewire-jack wireplumber \
 		  gst-plugin-pipewire lsp-plugins calf zam-plugins rnnoise easyeffects
@@ -32,8 +32,16 @@ FLATPAK = com.github.tchx84.Flatseal it.mijorus.gearlever com.github.wwmm.easyef
 RI = songrec xdman-beta-bin jdownloader2 qbittorrent lollypop localsend-bin gnome-network-displays
 
 WAY ?=
-I3 = i3-wm i3blocks i3lock-color i3status eos-settings-i3wm libx11
+#I3 = i3-wm i3blocks i3lock-color i3status eos-settings-i3wm 
+SXWM = sxwm
 
+sxwm: sxdot stray sxbar lock
+	@$(PACMAN) -S sxwm
+
+sxbar:
+	-@$(dGG) https://github.com/uint23/$@ $(PKG)/$@
+	-$(MK)
+	
 pkgclean:
 	cd $(PKG) && sudo rm -rf det/ doi/ dtop/ fetch/ px/ rot/ shot/ sxat/ wtf/ dacam/ baph/
 
@@ -59,7 +67,7 @@ rdfm:
 		git checkout -b config 2>/dev/null || git checkout config && \
 		bash install.bash
 
-few baph rot fetch dtop shot whot det px pw wtf:
+lock few baph rot fetch dtop shot whot det px pw wtf:
 	$(CLONE)
 	$(MK)
 

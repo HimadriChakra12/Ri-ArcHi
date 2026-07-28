@@ -13,6 +13,10 @@ dotfiles:
 	-@$(GG) $(URL)/.dotfiles $(DOTS)
 	@echo "Done!"
 
+sxdot:
+	$(call LINK,$(DOTS)/sxwmrc,$(CONF)/sxbarc)
+	$(call LINK,$(DOTS)/sxwmrc,$(CONF)/sxwmrc)
+	$(call LINK,$(DOTS)/sxwm-conf,$(CONF)/sxwm-conf)
 mimeconf:
 	$(call LINK,$(DOTS)/mimeapps.list,$(CONF)/mimeapps.list)
 mpv:
