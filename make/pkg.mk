@@ -67,7 +67,7 @@ rdfm:
 		git checkout -b config 2>/dev/null || git checkout config && \
 		bash install.bash
 
-lock few baph rot fetch dtop shot whot det px pw wtf:
+appache lock few baph rot fetch dtop shot whot det px pw wtf:
 	$(CLONE)
 	$(MK)
 
