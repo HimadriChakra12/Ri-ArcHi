@@ -30,12 +30,13 @@ mp3 = id3 flac
 FLATPAK = com.github.tchx84.Flatseal it.mijorus.gearlever com.github.wwmm.easyeffects
 
 RI = songrec xdman-beta-bin jdownloader2 qbittorrent lollypop localsend-bin gnome-network-displays
+STEAM = steam protonup-qt
 
 WAY ?=
 #I3 = i3-wm i3blocks i3lock-color i3status eos-settings-i3wm 
 SXWM = sxwm
 
-sxwm: sxdot stray sxbar lock
+sxwm: sxdot sxbar lock
 	@$(PACMAN) -S sxwm
 
 sxbar:
@@ -133,10 +134,10 @@ zotero: zotero-arc zotero-install
 dotnet:
 	@$(BAPH)$(N) dotnet-runtime-6.0 dotnet-runtime-7.0
 
-helium-browser onlyoffice:
+signal-desktop-beta protonup-qt helium-browser onlyoffice:
 	@$(BAPH)$(N) $@-bin 
 
-raindrop:
+raindrop steam:
 	@$(BAPH)$(N) $@
 
 omnisearch:

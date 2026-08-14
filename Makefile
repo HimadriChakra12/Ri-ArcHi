@@ -16,7 +16,6 @@ include make/wifi.mk
 include make/wine.mk
 
 
-
 all: welcome-banner2 time base dots
 
 time:
@@ -38,16 +37,16 @@ base-install:
 devel:
 	$(PACMAN) -S $(CLANG) $(NEED)
 
-dots: dotfiles mimeconf mpv pkgit bash rdfmconf gimp darktable dunst gh git lazygit rofi okular alacritty tmux vim lyconf nvim
-base: pacup base-install ly devel fetch dtop det wtf rdfm dacam chromium
+dots: dotfiles mimeconf mpv pkgit bash rdfmconf gimp darktable gh git lazygit rofi okular alacritty tmux vim lyconf nvim
+base: pacup base-install ly devel fetch dtop det wtf rdfm dacam helium-browser steam appache
 
 xorginit:
 	$(PACMAN) -S $(XORG)
 wayinit:
 	$(PACMAN) -S $(WAY)
 
-x: xorginit shot px sxat rsxiv i3 few
-way: wayinit whot pw swat
+x: all xorginit shot px sxat rsxiv sxwm few xorgconf
+way: all wayinit whot pw swat
 
 gpu:
 	$(PACMAN) -S xf86-video-intel
@@ -96,5 +95,6 @@ zotero-clean:
 
 .PHONY: dotfiles mimeconf base dots base base-install x way mime mpv pkgit bash rdfmconf gimp darktable \
 	dunst gh git i3 lazygit rofi okular alacritty tmux vim lyconf nvim shot px sxat rsxiv i3 clean pkgclean \
-	docker-install docker-configure docker-group docker-setup zotero zotero-install zotero-arc chromium baph onlyoffice
+	docker-install docker-configure docker-group docker-setup zotero zotero-install zotero-arc baph onlyoffice \
+	signal-desktop-beta protonup-qt helium-browser
 

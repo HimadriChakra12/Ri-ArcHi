@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ytdlp-tui-enhanced.sh - Enhanced TUI wrapper for yt-dlp with JSON organization
+# ytdlp-tui-enhanced.sh - Enhanced TUI wrapper for yt-dlp
 
 # Colors
 RED='\033[0;31m'
@@ -12,44 +12,14 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Default directories
+# Default directory
 MUSIC_DIR="$HOME/Music/yt-dlp"
-CONFIG_DIR="$HOME/.config/ytdlp-tui"
-DATABASE_FILE="$CONFIG_DIR/downloads.json"
 
 # UI mode: fzf, whiptail, or basic
 UI_MODE=""
 
 # Current download metadata
 declare -A DOWNLOAD_META
-
-# Initialize JSON database structure
-init_database() {
-    if [ ! -f "$DATABASE_FILE" ]; then
-        cat > "$DATABASE_FILE" << 'EOF'
-{
-  "youtube": {
-    "playlists": [],
-    "singles": []
-  },
-  "soundcloud": {
-    "playlists": [],
-    "singles": []
-  },
-  "other": {
-    "playlists": [],
-    "singles": []
-  },
-  "metadata": {
-    "version": "1.0",
-    "last_updated": "",
-    "total_downloads": 0
-  }
-}
-EOF
-        echo -e "${GREEN}✅ Database initialized${NC}"
-    fi
-}
 
 # Detect source from URL
 detect_source() {
@@ -73,62 +43,6 @@ is_playlist() {
     fi
 }
 
-# Add download to JSON database
-add_to_database() {
-    local source=$1
-    local type=$2  # "playlist" or "single"
-    local url=$3
-    local title=$4
-    local custom_name=$5
-    local format=$6
-    local download_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    local file_path=$7
-    
-    # Escape special characters for JSON
-    title=$(echo "$title" | sed 's/"/\\"/g' | sed "s/'/\\'/g")
-    custom_name=$(echo "$custom_name" | sed 's/"/\\"/g' | sed "s/'/\\'/g")
-    url=$(echo "$url" | sed 's/"/\\"/g')
-    file_path=$(echo "$file_path" | sed 's/"/\\"/g')
-    
-    # Create temporary Python script for JSON manipulation
-    python3 << PYEOF
-import json
-import sys
-
-try:
-    with open('$DATABASE_FILE', 'r') as f:
-        data = json.load(f)
-    
-    entry = {
-        "url": "$url",
-        "title": "$title",
-        "custom_name": "$custom_name",
-        "format": "$format",
-        "download_date": "$download_date",
-        "file_path": "$file_path",
-        "id": data['metadata']['total_downloads'] + 1
-    }
-    
-    # Add to appropriate section
-    if "$type" == "playlist":
-        data['$source']['playlists'].append(entry)
-    else:
-        data['$source']['singles'].append(entry)
-    
-    # Update metadata
-    data['metadata']['total_downloads'] += 1
-    data['metadata']['last_updated'] = "$download_date"
-    
-    with open('$DATABASE_FILE', 'w') as f:
-        json.dump(data, f, indent=2)
-    
-    print("success")
-except Exception as e:
-    print(f"error: {e}")
-    sys.exit(1)
-PYEOF
-}
-
 # Get custom name for download
 get_custom_name() {
     local default_name="$1"
@@ -147,182 +61,6 @@ get_custom_name() {
 
     # ONLY the final value goes to stdout
     printf '%s' "$custom_name"
-}
-
-# View database contents
-view_database() {
-    show_header
-    echo -e "${CYAN}📚 Download Database${NC}"
-    echo -e "${BLUE}=========================================${NC}"
-    
-    if [ ! -f "$DATABASE_FILE" ]; then
-        echo -e "${RED}❌ No database found${NC}"
-        return 1
-    fi
-    
-    python3 << PYEOF
-import json
-from datetime import datetime
-
-with open('$DATABASE_FILE', 'r') as f:
-    data = json.load(f)
-
-print("\n\033[1;35m═══════════════════════════════════════════════════════════\033[0m")
-print(f"\033[1;36m📊 Total Downloads:\033[0m {data['metadata']['total_downloads']}")
-print(f"\033[1;36m🕐 Last Updated:\033[0m {data['metadata']['last_updated']}")
-print("\033[1;35m═══════════════════════════════════════════════════════════\033[0m\n")
-
-sources = ['youtube', 'soundcloud', 'other']
-source_icons = {'youtube': '🎥', 'soundcloud': '🔊', 'other': '🌐'}
-
-for source in sources:
-    playlists = data[source]['playlists']
-    singles = data[source]['singles']
-    
-    if playlists or singles:
-        print(f"\n\033[1;33m{source_icons[source]} {source.upper()}\033[0m")
-        print("\033[0;34m─────────────────────────────────────────────────────────\033[0m")
-        
-        if playlists:
-            print(f"\n  \033[0;36m📋 Playlists ({len(playlists)}):\033[0m")
-            for idx, item in enumerate(playlists, 1):
-                print(f"    \033[0;32m{idx}.\033[0m \033[1m{item['custom_name']}\033[0m")
-                print(f"       \033[0;90m{item['title'][:60]}...\033[0m" if len(item['title']) > 60 else f"       \033[0;90m{item['title']}\033[0m")
-                print(f"       \033[0;35m🎵 {item['format']}\033[0m | \033[0;34m📅 {item['download_date'][:10]}\033[0m")
-        
-        if singles:
-            print(f"\n  \033[0;36m🎵 Singles ({len(singles)}):\033[0m")
-            for idx, item in enumerate(singles, 1):
-                print(f"    \033[0;32m{idx}.\033[0m \033[1m{item['custom_name']}\033[0m")
-                print(f"       \033[0;90m{item['title'][:60]}...\033[0m" if len(item['title']) > 60 else f"       \033[0;90m{item['title']}\033[0m")
-                print(f"       \033[0;35m🎵 {item['format']}\033[0m | \033[0;34m📅 {item['download_date'][:10]}\033[0m")
-
-print("\n\033[1;35m═══════════════════════════════════════════════════════════\033[0m\n")
-PYEOF
-    
-    echo
-    read -p "$(echo -e "${GREEN}Press Enter to continue...${NC}")"
-}
-
-# Export database as readable format
-export_database() {
-    show_header
-    echo -e "${CYAN}💾 Export Database${NC}"
-    echo -e "${BLUE}=========================================${NC}"
-    
-    local export_file="$CONFIG_DIR/downloads_export_$(date +%Y%m%d_%H%M%S).json"
-    cp "$DATABASE_FILE" "$export_file"
-    
-    echo -e "${GREEN}✅ Database exported to:${NC}"
-    echo -e "${YELLOW}$export_file${NC}"
-    echo
-    read -p "$(echo -e "${GREEN}Press Enter to continue...${NC}")"
-}
-
-# Search database
-search_database() {
-    show_header
-    echo -e "${CYAN}🔍 Search Database${NC}"
-    echo -e "${BLUE}=========================================${NC}"
-    
-    read -p "$(echo -e "${GREEN}🔎 Search term: ${NC}")" search_term
-    
-    if [ -z "$search_term" ]; then
-        echo -e "${RED}❌ Search term cannot be empty${NC}"
-        sleep 2
-        return
-    fi
-    
-    python3 << PYEOF
-import json
-
-with open('$DATABASE_FILE', 'r') as f:
-    data = json.load(f)
-
-search_term = "$search_term".lower()
-found = False
-
-sources = ['youtube', 'soundcloud', 'other']
-for source in sources:
-    for item in data[source]['playlists'] + data[source]['singles']:
-        if search_term in item['title'].lower() or search_term in item['custom_name'].lower():
-            if not found:
-                print("\n\033[1;32m🎯 Search Results:\033[0m\n")
-                found = True
-            
-            print(f"\033[1;36m{item['custom_name']}\033[0m")
-            print(f"  \033[0;90m{item['title']}\033[0m")
-            print(f"  \033[0;35m🔗 {item['url']}\033[0m")
-            print(f"  \033[0;34m📁 {item['file_path']}\033[0m")
-            print(f"  \033[0;33m🎵 {item['format']} | 📅 {item['download_date'][:10]}\033[0m")
-            print()
-
-if not found:
-    print("\n\033[0;31m❌ No results found\033[0m\n")
-PYEOF
-    
-    echo
-    read -p "$(echo -e "${GREEN}Press Enter to continue...${NC}")"
-}
-
-# Re-download from database
-redownload_from_database() {
-    show_header
-    echo -e "${CYAN}🔄 Re-download from Database${NC}"
-    echo -e "${BLUE}=========================================${NC}"
-    
-    # List all entries with IDs
-    python3 << PYEOF > /tmp/redownload_list.txt
-import json
-
-with open('$DATABASE_FILE', 'r') as f:
-    data = json.load(f)
-
-sources = ['youtube', 'soundcloud', 'other']
-for source in sources:
-    for item in data[source]['playlists'] + data[source]['singles']:
-        print(f"{item['id']}|{item['custom_name']}|{item['url']}|{item['format']}")
-PYEOF
-    
-    # Display with fzf if available
-    if [ "$UI_MODE" = "fzf" ]; then
-        selected=$(cat /tmp/redownload_list.txt | awk -F'|' '{printf "%3s %-50s %s\n", $1, $2, $4}' | fzf --height=80% --header="Select item to re-download" | awk '{print $1}')
-    else
-        # Basic display
-        echo -e "${YELLOW}Available downloads:${NC}\n"
-        cat /tmp/redownload_list.txt | awk -F'|' '{printf "%3s) %-50s [%s]\n", $1, $2, $4}'
-        echo
-        read -p "$(echo -e "${GREEN}🔢 Enter ID to re-download: ${NC}")" selected
-    fi
-    
-    if [ -z "$selected" ]; then
-        echo -e "${RED}❌ No selection made${NC}"
-        sleep 2
-        return
-    fi
-    
-    # Get URL and format from selection
-    selected_data=$(grep "^${selected}|" /tmp/redownload_list.txt)
-    redownload_url=$(echo "$selected_data" | cut -d'|' -f3)
-    redownload_format=$(echo "$selected_data" | cut -d'|' -f4)
-    
-    if [ -z "$redownload_url" ]; then
-        echo -e "${RED}❌ Invalid selection${NC}"
-        sleep 2
-        return
-    fi
-    
-    # Set global variables and download
-    url="$redownload_url"
-    format="$redownload_format"
-    
-    echo -e "${GREEN}🔄 Re-downloading...${NC}"
-    
-    if is_playlist "$url"; then
-        download_entire_playlist
-    else
-        download_single
-    fi
 }
 
 # Check available UI tools
@@ -347,10 +85,6 @@ check_dependencies() {
         missing_deps+=("yt-dlp")
     fi
     
-    if ! command -v python3 &> /dev/null; then
-        missing_deps+=("python3")
-    fi
-    
     if [ ${#missing_deps[@]} -gt 0 ]; then
         echo -e "${RED}Error: Missing dependencies:${NC}"
         for dep in "${missing_deps[@]}"; do
@@ -365,13 +99,12 @@ check_dependencies() {
 # Setup directories
 setup_directories() {
     mkdir -p "$MUSIC_DIR"
-    mkdir -p "$CONFIG_DIR"
-    mkdir -p "$MUSIC_DIR/youtube/playlists"
-    mkdir -p "$MUSIC_DIR/youtube/singles"
-    mkdir -p "$MUSIC_DIR/soundcloud/playlists"
-    mkdir -p "$MUSIC_DIR/soundcloud/singles"
-    mkdir -p "$MUSIC_DIR/other/playlists"
-    mkdir -p "$MUSIC_DIR/other/singles"
+    for src in youtube soundcloud other; do
+        mkdir -p "$MUSIC_DIR/$src/audio/playlists"
+        mkdir -p "$MUSIC_DIR/$src/audio/singles"
+        mkdir -p "$MUSIC_DIR/$src/video/playlists"
+        mkdir -p "$MUSIC_DIR/$src/video/singles"
+    done
 }
 
 # Show fancy header
@@ -381,7 +114,7 @@ show_header() {
     cat << "HEADER"
 ╔══════════════════════════════════════════════════════════╗
 ║              🎵 YouTube-DL Audio TUI Enhanced            ║
-║            Organized Audio Downloader with JSON          ║
+║              Organized Audio/Video Downloader             ║
 ╚══════════════════════════════════════════════════════════╝
 HEADER
     echo -e "${NC}"
@@ -393,23 +126,15 @@ main_menu() {
     echo -e "${CYAN}📋 Main Menu${NC}"
     echo -e "${BLUE}=========================================${NC}"
     echo
-    echo -e "  ${GREEN}1${NC}) ${BOLD}Download New${NC} - Download audio from URL"
-    echo -e "  ${GREEN}2${NC}) ${BOLD}View Database${NC} - Browse all downloads"
-    echo -e "  ${GREEN}3${NC}) ${BOLD}Search Database${NC} - Find specific downloads"
-    echo -e "  ${GREEN}4${NC}) ${BOLD}Re-download${NC} - Download again from database"
-    echo -e "  ${GREEN}5${NC}) ${BOLD}Export Database${NC} - Backup your database"
-    echo -e "  ${GREEN}6${NC}) ${BOLD}Exit${NC} - Quit application"
+    echo -e "  ${GREEN}1${NC}) ${BOLD}Download${NC} - Download audio or video from URL"
+    echo -e "  ${GREEN}2${NC}) ${BOLD}Exit${NC} - Quit application"
     echo
     
-    read -p "$(echo -e "${GREEN}🎯 Select option (1-6): ${NC}")" menu_choice
+    read -p "$(echo -e "${GREEN}🎯 Select option (1-2): ${NC}")" menu_choice
     
     case $menu_choice in
         1) download_workflow ;;
-        2) view_database ;;
-        3) search_database ;;
-        4) redownload_from_database ;;
-        5) export_database ;;
-        6) 
+        2) 
             echo -e "${CYAN}👋 Thanks for using ytdlp-tui-enhanced!${NC}"
             exit 0
             ;;
@@ -450,19 +175,88 @@ get_url() {
     return 0
 }
 
-# Select format based on UI mode
-select_format() {
+# Select whether to download audio-only or video
+select_mode() {
     case $UI_MODE in
         "fzf")
-            select_format_fzf
+            select_mode_fzf
             ;;
         "whiptail")
-            select_format_whiptail
+            select_mode_whiptail
             ;;
         "basic")
-            select_format_basic
+            select_mode_basic
             ;;
     esac
+}
+
+select_mode_fzf() {
+    show_header
+    echo -e "${CYAN}🎛️  Select Media Type${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    
+    local choice=$(printf "audio\tAudio only (mp3/m4a/opus/flac/wav)\nvideo\tVideo (mp4/m4a/mkv/webm)" | fzf --height=40% --header="Download audio or video?" --delimiter=$'\t' --with-nth=1,2 | cut -f1)
+    
+    DOWNLOAD_META[mode]="${choice:-audio}"
+}
+
+select_mode_whiptail() {
+    local choice=$(whiptail --title "Select Media Type" --menu "Download audio or video?" 12 60 2 \
+        "audio" "Audio only (mp3/m4a/opus/flac/wav)" \
+        "video" "Video (mp4/m4a/mkv/webm)" 3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ -z "$choice" ]; then
+        choice="audio"
+    fi
+    DOWNLOAD_META[mode]="$choice"
+}
+
+select_mode_basic() {
+    show_header
+    echo -e "${CYAN}🎛️  Select Media Type${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo
+    echo -e "  ${GREEN}1${NC}) ${BOLD}Audio${NC} - Extract audio only"
+    echo -e "  ${GREEN}2${NC}) ${BOLD}Video${NC} - Download video (with audio)"
+    echo
+    
+    while true; do
+        read -p "$(echo -e "${GREEN}🎯 Select type (1-2): ${NC}")" mode_choice
+        case $mode_choice in
+            1) DOWNLOAD_META[mode]="audio"; break ;;
+            2) DOWNLOAD_META[mode]="video"; break ;;
+            *) echo -e "${RED}❌ Invalid choice! Please enter 1-2${NC}" ;;
+        esac
+    done
+}
+
+# Select format based on UI mode and media type (audio/video)
+select_format() {
+    if [ "${DOWNLOAD_META[mode]}" = "video" ]; then
+        case $UI_MODE in
+            "fzf")
+                select_video_format_fzf
+                ;;
+            "whiptail")
+                select_video_format_whiptail
+                ;;
+            "basic")
+                select_video_format_basic
+                ;;
+        esac
+    else
+        case $UI_MODE in
+            "fzf")
+                select_format_fzf
+                ;;
+            "whiptail")
+                select_format_whiptail
+                ;;
+            "basic")
+                select_format_basic
+                ;;
+        esac
+    fi
 }
 
 select_format_fzf() {
@@ -515,6 +309,75 @@ select_format_basic() {
             *) echo -e "${RED}❌ Invalid choice! Please enter 1-5${NC}" ;;
         esac
     done
+}
+
+select_video_format_fzf() {
+    show_header
+    echo -e "${CYAN}🎬 Select Video Format${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    
+    format=$(printf "mp4\tMP4 format (most compatible)\nm4a\tM4A container (audio+video, Apple)\nmkv\tMKV format (best quality/codec match)\nwebm\tWebM format (open, efficient)" | fzf --height=40% --header="Select video format:" --delimiter=$'\t' --with-nth=1,2 | cut -f1)
+    
+    if [ -z "$format" ]; then
+        echo -e "${RED}No format selected, using mp4${NC}"
+        format="mp4"
+    fi
+}
+
+select_video_format_whiptail() {
+    format=$(whiptail --title "Select Video Format" --menu "Choose download format:" 15 55 4 \
+        "mp4" "MP4 format (most compatible)" \
+        "m4a" "M4A container (audio+video, Apple)" \
+        "mkv" "MKV format (best quality/codec match)" \
+        "webm" "WebM format (open, efficient)" 3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ] || [ -z "$format" ]; then
+        format="mp4"
+    fi
+}
+
+select_video_format_basic() {
+    show_header
+    echo -e "${CYAN}🎬 Select Video Format${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo
+    echo -e "  ${GREEN}1${NC}) ${BOLD}mp4${NC}  - MP4 format (most compatible)"
+    echo -e "  ${GREEN}2${NC}) ${BOLD}m4a${NC}  - M4A container (audio+video, Apple)"
+    echo -e "  ${GREEN}3${NC}) ${BOLD}mkv${NC}  - MKV format (best quality/codec match)"
+    echo -e "  ${GREEN}4${NC}) ${BOLD}webm${NC} - WebM format (open, efficient)"
+    echo
+    
+    while true; do
+        read -p "$(echo -e "${GREEN}🎬 Select format (1-4): ${NC}")" format_choice
+        
+        case $format_choice in
+            1) format="mp4"; break ;;
+            2) format="m4a"; break ;;
+            3) format="mkv"; break ;;
+            4) format="webm"; break ;;
+            *) echo -e "${RED}❌ Invalid choice! Please enter 1-4${NC}" ;;
+        esac
+    done
+}
+
+# Build the yt-dlp download args array based on DOWNLOAD_META[mode] and $format
+# Populates the global array DLP_ARGS
+build_dlp_args() {
+    DLP_ARGS=()
+    if [ "${DOWNLOAD_META[mode]}" = "video" ]; then
+        # Always grab the best available video+audio streams regardless of
+        # their native container, then let --merge-output-format remux/
+        # transcode into the chosen format. Filtering streams by ext=$format
+        # here was the bug: mkv (and often mp4/webm) rarely occurs as a
+        # native stream extension, so the filter matched nothing and fell
+        # back to the single low-res pre-muxed "best" format.
+        DLP_ARGS+=(-f "bestvideo+bestaudio/best")
+        DLP_ARGS+=(--merge-output-format "$format")
+        DLP_ARGS+=(--embed-metadata --embed-thumbnail)
+    else
+        DLP_ARGS+=(-x --audio-format "$format" --audio-quality 0)
+        DLP_ARGS+=(--embed-metadata --embed-thumbnail)
+    fi
 }
 
 # Get playlist info
@@ -644,7 +507,8 @@ select_playlist_items_basic() {
 # Download single video
 download_single() {
     local source="${DOWNLOAD_META[source]}"
-    local save_dir="$MUSIC_DIR/$source/singles"
+    local media_mode="${DOWNLOAD_META[mode]:-audio}"
+    local save_dir="$MUSIC_DIR/$source/$media_mode/singles"
     
     # Get video title first
     echo -e "${YELLOW}🔍 Fetching video info...${NC}"
@@ -656,11 +520,19 @@ download_single() {
     
     # Get custom name
     custom_name=$(get_custom_name "$video_title")
+
+    # Sanitize for use as a filename (strip characters that are risky or
+    # illegal in filenames; keep spaces/unicode)
+    local safe_name=$(echo "$custom_name" | sed 's/[\/:\*?"<>|]//g')
+    if [ -z "$safe_name" ]; then
+        safe_name="$video_title"
+    fi
     
     show_header
     echo -e "${CYAN}🚀 Starting Download${NC}"
     echo -e "${BLUE}=========================================${NC}"
     echo -e "${GREEN}📁 Location:${NC} $save_dir"
+    echo -e "${GREEN}🎬 Type:${NC} $media_mode"
     echo -e "${GREEN}🎵 Format:${NC} $format"
     echo -e "${GREEN}📝 Name:${NC} $custom_name"
     echo -e "${GREEN}🔗 URL:${NC} $url"
@@ -668,30 +540,21 @@ download_single() {
     echo -e "${YELLOW}⬇️  Downloading...${NC}"
     echo "──────────────────────────────────────────────────"
     
+    mkdir -p "$save_dir"
     cd "$save_dir"
-    yt-dlp -x \
-        --audio-format "$format" \
-        --audio-quality 0 \
-        --embed-metadata \
-        --embed-thumbnail \
-        -o "%(title)s.%(ext)s" \
+    
+    build_dlp_args
+    yt-dlp "${DLP_ARGS[@]}" \
+        -o "${safe_name}.%(ext)s" \
         "$url"
     
     local result=$?
     
     if [ $result -eq 0 ]; then
-        # Find the downloaded file
-        local downloaded_file=$(ls -t "$save_dir" | head -1)
-        local file_path="$save_dir/$downloaded_file"
-        
-        # Add to database
-        add_to_database "$source" "singles" "$url" "$video_title" "$custom_name" "$format" "$file_path"
-        
         echo
         echo "──────────────────────────────────────────────────"
         echo -e "${GREEN}✅ Download completed successfully!${NC}"
         echo -e "${BLUE}📁 Files saved to: $save_dir${NC}"
-        echo -e "${GREEN}💾 Added to database${NC}"
     else
         echo
         echo "──────────────────────────────────────────────────"
@@ -702,8 +565,9 @@ download_single() {
 # Download entire playlist
 download_entire_playlist() {
     local source="${DOWNLOAD_META[source]}"
+    local media_mode="${DOWNLOAD_META[mode]:-audio}"
     local playlist_title="${DOWNLOAD_META[playlist_title]}"
-    local save_dir="$MUSIC_DIR/$source/playlists"
+    local save_dir="$MUSIC_DIR/$source/$media_mode/playlists"
     
     # Get custom name for playlist
     custom_name=$(get_custom_name "$playlist_title")
@@ -716,6 +580,7 @@ download_entire_playlist() {
     echo -e "${CYAN}🚀 Downloading Entire Playlist${NC}"
     echo -e "${BLUE}=========================================${NC}"
     echo -e "${GREEN}📁 Location:${NC} $full_save_dir"
+    echo -e "${GREEN}🎬 Type:${NC} $media_mode"
     echo -e "${GREEN}🎵 Format:${NC} $format"
     echo -e "${GREEN}📝 Name:${NC} $custom_name"
     echo -e "${GREEN}📋 Videos:${NC} ${#titles[@]}"
@@ -727,25 +592,18 @@ download_entire_playlist() {
     mkdir -p "$full_save_dir"
     cd "$full_save_dir"
     
-    yt-dlp -x \
-        --audio-format "$format" \
-        --audio-quality 0 \
-        --embed-metadata \
-        --embed-thumbnail \
+    build_dlp_args
+    yt-dlp "${DLP_ARGS[@]}" \
         -o "%(title)s.%(ext)s" \
         "$url"
     
     local result=$?
     
     if [ $result -eq 0 ]; then
-        # Add to database
-        add_to_database "$source" "playlists" "$url" "$playlist_title" "$custom_name" "$format" "$full_save_dir"
-        
         echo
         echo "──────────────────────────────────────────────────"
         echo -e "${GREEN}✅ Playlist download completed successfully!${NC}"
         echo -e "${BLUE}📁 Files saved to: $full_save_dir${NC}"
-        echo -e "${GREEN}💾 Added to database${NC}"
     else
         echo
         echo "──────────────────────────────────────────────────"
@@ -756,9 +614,10 @@ download_entire_playlist() {
 # Download selected videos from playlist
 download_selected_videos() {
     local source="${DOWNLOAD_META[source]}"
+    local media_mode="${DOWNLOAD_META[mode]:-audio}"
     local playlist_title="${DOWNLOAD_META[playlist_title]}"
     local selection="${DOWNLOAD_META[selection]}"
-    local save_dir="$MUSIC_DIR/$source/playlists"
+    local save_dir="$MUSIC_DIR/$source/$media_mode/playlists"
     
     # Get custom name for selection
     custom_name=$(get_custom_name "$playlist_title (Selected)")
@@ -771,6 +630,7 @@ download_selected_videos() {
     echo -e "${CYAN}🚀 Downloading Selected Videos${NC}"
     echo -e "${BLUE}=========================================${NC}"
     echo -e "${GREEN}📁 Location:${NC} $full_save_dir"
+    echo -e "${GREEN}🎬 Type:${NC} $media_mode"
     echo -e "${GREEN}🎵 Format:${NC} $format"
     echo -e "${GREEN}📝 Name:${NC} $custom_name"
     echo -e "${GREEN}🎯 Selected:${NC} $selection"
@@ -782,11 +642,8 @@ download_selected_videos() {
     mkdir -p "$full_save_dir"
     cd "$full_save_dir"
     
-    yt-dlp -x \
-        --audio-format "$format" \
-        --audio-quality 0 \
-        --embed-metadata \
-        --embed-thumbnail \
+    build_dlp_args
+    yt-dlp "${DLP_ARGS[@]}" \
         --playlist-items "$selection" \
         -o "%(title)s.%(ext)s" \
         "$url"
@@ -794,14 +651,10 @@ download_selected_videos() {
     local result=$?
     
     if [ $result -eq 0 ]; then
-        # Add to database
-        add_to_database "$source" "playlists" "$url" "$playlist_title (Selected: $selection)" "$custom_name" "$format" "$full_save_dir"
-        
         echo
         echo "──────────────────────────────────────────────────"
         echo -e "${GREEN}✅ Selected videos downloaded successfully!${NC}"
         echo -e "${BLUE}📁 Files saved to: $full_save_dir${NC}"
-        echo -e "${GREEN}💾 Added to database${NC}"
     else
         echo
         echo "──────────────────────────────────────────────────"
@@ -815,6 +668,9 @@ download_workflow() {
     if ! get_url; then
         return
     fi
+    
+    # Select audio or video
+    select_mode
     
     # Select format
     select_format
@@ -848,7 +704,6 @@ main() {
     detect_ui
     check_dependencies
     setup_directories
-    init_database
     
     while true; do
         main_menu
