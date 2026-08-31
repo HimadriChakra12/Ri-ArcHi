@@ -52,6 +52,7 @@ gpu:
 	$(PACMAN) -S xf86-video-intel
 
 xorgconf:
+	echo export MOZ_USE_XINPUT2=1 | sudo tee /etc/profile.d/use-xinput2.sh
 	sudo cp $(RIYA)/xorg.config.d/* -f /etc/X11/xorg.conf.d/
 	ls /etc/X11/xorg.conf.d/
 
@@ -85,10 +86,43 @@ clean:
 	@sudo du -hxd1 /opt 2>/dev/null | sort -h | awk '$$1 ~ /[0-9]M|G/ {print}'
 	@echo "==> Cleanup complete."
 
+WAYDROID_MODULES := binder_linux ashmem_linux
+
 waydroid:
-	$(PACMAN) -S $(NEED) xorg-xwayland cage waydroid
-	sudo waydroid init
-	sudo waydroid container start
+	@$(PACMAN) -S $(NEED) xorg-xwayland cage waydroid
+	@cp -f applications/waydroid.desktop $(HOMEDIR)/.local/share/applications/
+	@echo "== Checking binder/ashmem modules =="
+	@if ! lsmod | grep -q binder_linux; then \
+		sudo modprobe binder_linux devices="binder,hwbinder,vndbinder" 2>/dev/null || \
+		echo "!! binder_linux module missing — install binder_linux-dkms (AUR) or check for /dev/binderfs"; \
+	fi
+	@if ls /dev/binderfs >/dev/null 2>&1 || mount | grep -q binder; then \
+		echo "binderfs OK"; \
+	fi
+	@if ! lsmod | grep -q ashmem_linux; then \
+		sudo modprobe ashmem_linux 2>/dev/null || echo "!! ashmem_linux not available (may be unneeded on newer kernels)"; \
+	fi
+	@echo "== Initializing waydroid (skips if already done) =="
+	@sudo test -f /var/lib/waydroid/waydroid_base.prop || sudo waydroid init
+	@echo "== Starting container =="
+	@sudo systemctl enable --now waydroid-container.service
+	@echo "== Waiting for container to come up =="
+	@for i in $$(seq 1 15); do \
+		sudo waydroid status 2>/dev/null | grep -q "Container:.*RUNNING" && break; \
+		sleep 1; \
+	done
+	@sudo waydroid status | grep -q "Container:.*RUNNING" || \
+		(echo "!! Container failed to start — check: sudo journalctl -u waydroid-container -e" && exit 1)
+	@echo "== Starting session in background =="
+	@waydroid session start > /tmp/waydroid-session.log 2>&1 & disown
+	@sleep 3
+	@echo "== Enabling fake WiFi so apps see a connection =="
+	@waydroid shell settings put global wifi_on 1 2>/dev/null || true
+	@waydroid prop set persist.waydroid.fake_wifi true 2>/dev/null || true
+	@echo "== Done. Verify with: sudo waydroid status; ip addr show waydroid0 =="
+
+waydroid-launch:
+	@cage waydroid session start &
 
 zotero-clean:
 	rm -rf $(HOMEDIR)/.mozilla

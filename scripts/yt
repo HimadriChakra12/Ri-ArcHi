@@ -373,10 +373,10 @@ build_dlp_args() {
         # back to the single low-res pre-muxed "best" format.
         DLP_ARGS+=(-f "bestvideo+bestaudio/best")
         DLP_ARGS+=(--merge-output-format "$format")
-        DLP_ARGS+=(--embed-metadata --embed-thumbnail)
+        DLP_ARGS+=(--embed-metadata)
     else
         DLP_ARGS+=(-x --audio-format "$format" --audio-quality 0)
-        DLP_ARGS+=(--embed-metadata --embed-thumbnail)
+        DLP_ARGS+=(--embed-metadata)
     fi
 }
 

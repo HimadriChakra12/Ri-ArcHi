@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# Exit immediately on error
+set -e
+
+# 1. Verify dependencies
+if ! command -v yt-dlp &> /dev/null; then
+    echo "Error: 'yt-dlp' is not installed." >&2
+    exit 1
+fi
+
+if ! command -v 7z &> /dev/null; then
+    echo "Error: '7z' is not installed." >&2
+    exit 1
+fi
+
+# 2. Check arguments
+if [ -z "$1" ]; then
+    echo "Usage: ytplay <playlist_url_or_args>"
+    exit 1
+fi
+
+URL="$1"
+
+# 3. Native speed optimizations (Safe from 403 blocks)
+SPEED_FLAGS=(
+    "--concurrent-fragments" "16"  # Download 16 fragments simultaneously
+    "--http-chunk-size" "10M"      # Chunk size to bypass throttle
+)
+
+# 4. Fetch playlist title
+echo "==> Fetching playlist details..."
+PLAYLIST_NAME=$(yt-dlp --print "%(playlist_title)s" --flat-playlist "$URL" 2>/dev/null | head -n 1)
+
+if [ -z "$PLAYLIST_NAME" ] || [ "$PLAYLIST_NAME" = "NA" ]; then
+    PLAYLIST_NAME="Playlist_$(date +%Y%m%d_%H%M%S)"
+else
+    PLAYLIST_NAME=$(echo "$PLAYLIST_NAME" | sed -e 's/[^A-Za-z0-9._-]/_/g' -e 's/_+/_/g')
+fi
+
+echo "==> Target Folder: $PLAYLIST_NAME"
+# 5. Download playlist
+echo "==> Downloading playlist..."
+yt-dlp \
+    "${SPEED_FLAGS[@]}" \
+    --yes-playlist \
+    -o "${PLAYLIST_NAME}/%(playlist_index)s - %(title)s.%(ext)s" \
+    "$@"
+
+# 6. Compress into .7z archive
+echo "==> Compressing into ${PLAYLIST_NAME}.7z..."
+7z a "${PLAYLIST_NAME}.7z" "./${PLAYLIST_NAME}"
+
+# 7. Clean up folder
+echo "==> Cleaning up original folder..."
+rm -rf "${PLAYLIST_NAME}"
+
+echo "==> Success! Playlist saved to ${PLAYLIST_NAME}.7z"

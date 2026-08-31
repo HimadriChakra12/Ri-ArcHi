@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Droid
+Exec=cage -- waydroid show-full-ui
+Type=Application
+Icon=Waydroid
+Terminal=false
+StartupNotify=true
