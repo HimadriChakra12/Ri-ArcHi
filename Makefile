@@ -130,5 +130,5 @@ zotero-clean:
 .PHONY: dotfiles mimeconf base dots base base-install x way mime mpv pkgit bash rdfmconf gimp darktable \
 	dunst gh git i3 lazygit rofi okular alacritty tmux vim lyconf nvim shot px sxat rsxiv i3 clean pkgclean \
 	docker-install docker-configure docker-group docker-setup zotero zotero-install zotero-arc baph onlyoffice \
-	signal-desktop-beta protonup-qt helium-browser
+	signal-desktop-beta protonup-qt helium-browser thinkfan powertop
 

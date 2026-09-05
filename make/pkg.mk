@@ -28,6 +28,7 @@ XDG = archlinux-xdg-menu xdg-user-dirs-gtk
 RDFM = libfm libfm-gtk3 intltool libtool gettext pkg-config autoconf automake
 mp3 = id3 flac
 FLATPAK = com.github.tchx84.Flatseal it.mijorus.gearlever com.github.wwmm.easyeffects
+FAN = powertop
 
 RI = songrec xdman-beta-bin jdownloader2 qbittorrent lollypop localsend-bin gnome-network-displays
 STEAM = steam protonup-qt
@@ -137,8 +138,22 @@ dotnet:
 signal-desktop-beta protonup-qt helium-browser onlyoffice:
 	@$(BAPH)$(N) $@-bin 
 
-raindrop steam:
+thinkfan raindrop steam:
 	@$(BAPH)$(N) $@
+
+thinkfan-setup:
+	@sudo cp $(RIYA)/thinkfan/thinkfan.yaml /etc/
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable thinkfan
+	@sudo systemctl restart thinkfan
+
+powertop:
+	@sudo cp $(RIYA)/powertop/powertop.service /etc/systemd/system/
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable powertop.service
+	@sudo systemctl restart powertop.service
+
+fan: thinkfan-setup powertop
 
 omnisearch:
 	-@$(PACMAN) -S libxml2 curl $(NOC)
